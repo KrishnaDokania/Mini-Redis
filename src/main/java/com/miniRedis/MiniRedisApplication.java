@@ -1,3 +1,4 @@
+
 package com.miniRedis;
 
 import com.miniRedis.storage.RedisStorage;
@@ -8,16 +9,20 @@ public class MiniRedisApplication {
 
         RedisStorage redis = new RedisStorage();
 
+        // Store data
         redis.set("name", "Krishna");
-        redis.set("city", "Prayagraj");
+        redis.set("age", "22");
 
+        // Retrieve data
         System.out.println(redis.get("name"));
-        System.out.println(redis.get("city"));
 
-        System.out.println(redis.exists("name"));
+        // Check existence
+        System.out.println(redis.exists("age"));
 
-        redis.delete("name");
+        // Delete data
+        System.out.println(redis.delete("name"));
 
+        // Check after deletion
         System.out.println(redis.get("name"));
     }
 }

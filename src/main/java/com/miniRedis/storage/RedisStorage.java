@@ -19,8 +19,8 @@ public class RedisStorage {
     }
 
     // Delete a key
-    public void delete(String key) {
-        storage.remove(key);
+    public boolean delete(String key) {
+        return storage.remove(key)!=null;
     }
 
     // Check whether a key exists
