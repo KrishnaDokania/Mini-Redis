@@ -2,24 +2,35 @@
 package com.miniRedis.server;
 
 import com.miniRedis.command.CommandHandler;
-import com.miniRedis.command.CommandParser;
+import com.miniRedis.protocol.RESPParser;
+import com.miniRedis.protocol.RESPResponse;
 
-import java.io.BufferedReader;
-import java.io.InputStreamReader;
-import java.io.PrintWriter;
+import java.io.InputStream;
+import java.io.OutputStream;
+import java.io.IOException;
 import java.net.ServerSocket;
 import java.net.Socket;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class RedisServer {
 
     private final int port;
-    private final CommandParser parser;
     private final CommandHandler handler;
 
+    private final RESPParser parser;
+    private final RESPResponse response;
+
+    private final ExecutorService threadPool =
+            Executors.newFixedThreadPool(10);
+
     public RedisServer(int port, CommandHandler handler) {
+
         this.port = port;
         this.handler = handler;
-        this.parser = new CommandParser();
+
+        this.parser = new RESPParser();
+        this.response = new RESPResponse();
     }
 
     public void start() {
@@ -35,11 +46,16 @@ public class RedisServer {
                 System.out.println("Client connected: "
                         + clientSocket.getInetAddress());
 
-                handleClient(clientSocket);
+                threadPool.execute(() -> handleClient(clientSocket));
             }
 
         } catch (Exception e) {
+
             System.out.println("Server error: " + e.getMessage());
+
+        } finally {
+
+            threadPool.shutdown();
         }
     }
 
@@ -47,37 +63,77 @@ public class RedisServer {
 
         try (
                 Socket client = socket;
-                BufferedReader input = new BufferedReader(
-                        new InputStreamReader(client.getInputStream())
-                );
-                PrintWriter output = new PrintWriter(
-                        client.getOutputStream(), true
-                )
+                InputStream input = client.getInputStream();
+                OutputStream output = client.getOutputStream()
         ) {
 
-            String command;
+            while (true) {
 
-            while ((command = input.readLine()) != null) {
+                // Read a RESP command
+                String[] parts = parser.readCommand(input);
 
-                if (command.equalsIgnoreCase("EXIT")) {
-                    output.println("BYE");
+                // Client disconnected
+                if (parts == null) {
                     break;
                 }
 
-                try {
-                    String[] parts = parser.parse(command);
+                // Execute command
+                String result = handler.handle(parts);
 
-                    String response = handler.handle(parts);
-
-                    output.println(response);
-
-                } catch (IllegalArgumentException e) {
-                    output.println("ERR " + e.getMessage());
-                }
+                // Convert result into RESP response
+                sendResponse(output, parts[0], result);
             }
 
+        } catch (IOException e) {
+
+            System.out.println("Client disconnected: "
+                    + e.getMessage());
+
         } catch (Exception e) {
-            System.out.println("Client disconnected.");
+
+            System.out.println("Client error: "
+                    + e.getMessage());
+        }
+    }
+
+    private void sendResponse(
+            OutputStream output,
+            String command,
+            String result
+    ) throws IOException {
+
+        String cmd = command.toUpperCase();
+
+        // Handle errors
+        if (result.startsWith("ERR")) {
+
+            response.writeError(output, result);
+            return;
+        }
+
+        switch (cmd) {
+
+            case "SET":
+                response.writeSimpleString(output, result);
+                break;
+
+            case "GET":
+
+                if ("(nil)".equals(result)) {
+                    response.writeBulkString(output, null);
+                } else {
+                    response.writeBulkString(output, result);
+                }
+
+                break;
+
+            case "DEL":
+            case "EXISTS":
+                response.writeInteger(output, Long.parseLong(result));
+                break;
+
+            default:
+                response.writeSimpleString(output, result);
         }
     }
 }
