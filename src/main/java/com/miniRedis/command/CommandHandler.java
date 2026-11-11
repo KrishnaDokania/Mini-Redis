@@ -55,6 +55,11 @@ public class CommandHandler {
                 }
 
                 return storage.exists(parts[1]) ? "1" : "0";
+            case "PING":
+                if (parts.length != 1) {
+                    return "ERR wrong number of arguments for PING";
+                }
+                return "PONG";
 
             default:
                 return "ERR unknown command '" + command + "'";

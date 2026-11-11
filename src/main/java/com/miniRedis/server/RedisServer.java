@@ -73,9 +73,10 @@ public class RedisServer {
                 String[] parts = parser.readCommand(input);
 
                 // Client disconnected
-                if (parts == null) {
-                    break;
-                }
+              if (parts == null) {
+    System.out.println("Client disconnected normally.");
+    break;
+}
 
                 // Execute command
                 String result = handler.handle(parts);
