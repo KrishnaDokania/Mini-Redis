@@ -76,7 +76,8 @@ public class RedisServer {
               if (parts == null) {
     System.out.println("Client disconnected normally.");
     break;
-}
+} 
+
 
                 // Execute command
                 String result = handler.handle(parts);
@@ -114,9 +115,11 @@ public class RedisServer {
 
         switch (cmd) {
 
-            case "SET":
-                response.writeSimpleString(output, result);
-                break;
+           case "SET":
+case "SETEX":
+case "PING":
+    response.writeSimpleString(output, result);
+    break;
 
             case "GET":
 
@@ -132,6 +135,11 @@ public class RedisServer {
             case "EXISTS":
                 response.writeInteger(output, Long.parseLong(result));
                 break;
+            case "EXPIRE":
+case "TTL":
+    response.writeInteger(output, Long.parseLong(result));
+    break;
+    
 
             default:
                 response.writeSimpleString(output, result);

@@ -61,6 +61,46 @@ public class CommandHandler {
                 }
                 return "PONG";
 
+            case "EXPIRE":
+                if (parts.length != 3) {
+                    return "ERR wrong number of arguments for EXPIRE";
+                }
+
+                try {
+                    long seconds = Long.parseLong(parts[2]);
+
+                    return storage.expire(parts[1], seconds) ? "1" : "0";
+
+                } catch (NumberFormatException e) {
+                    return "ERR invalid expiration time";
+                }
+
+            case "TTL":
+                if (parts.length != 2) {
+                    return "ERR wrong number of arguments for TTL";
+                }
+
+                return String.valueOf(storage.ttl(parts[1]));
+
+            case "SETEX":
+                if (parts.length != 4) {
+                    return "ERR wrong number of arguments for SETEX";
+                }
+
+                try {
+                    long seconds = Long.parseLong(parts[2]);
+
+                    if (seconds <= 0) {
+                        return "ERR invalid expiration time";
+                    }
+
+                    storage.setEx(parts[1], seconds, parts[3]);
+                    return "OK";
+
+                } catch (NumberFormatException e) {
+                    return "ERR invalid expiration time";
+                }
+
             default:
                 return "ERR unknown command '" + command + "'";
         }
